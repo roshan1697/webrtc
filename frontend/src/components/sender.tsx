@@ -45,24 +45,88 @@ const Sender: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const meetingId = 'abc-defg-hij';
 
+    const [socketCon , setSocketCon] = useState<WebSocket | null>(null)
+    const [pc,setPc] = useState<RTCPeerConnection | null>(null)
     const participants: Participant[] = [
         { id: '1', name: 'You', isHost: true, isMuted: isMuted, hasVideo: hasVideo },
         { id: '2', name: 'John Doe', isMuted: false, hasVideo: true },
 
     ];
 
-    useEffect(() => {
-        // Simulate getting user media
-        if (videoRef.current && hasVideo) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then(stream => {
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(err => console.log('Error accessing media devices:', err));
+    useEffect(()=>{
+        // ws connection
+        const ws = new WebSocket('http://localhost:3001')
+        setSocketCon(ws)
+        try { 
+            ws.onopen = () => ws.send(JSON.stringify({
+            type:'sender'
+        }))}
+        catch(e) {
+            console.error(e)
         }
-    }, [hasVideo]);
+        initialCon()
+    },[])
+
+    const initialCon = async() =>{
+        if(!socketCon){
+            return
+        }
+        socketCon.onmessage = ({data}) => {
+            const message = JSON.parse(data)
+
+            if(message.type === 'createAnswer'){
+                pc?.setRemoteDescription(message.sdp)
+            }else if(message.type === 'iceCandidate'){
+                pc?.addIceCandidate(message.iceCandidate)
+            }
+        }
+
+        const currentPc = new RTCPeerConnection()
+        setPc(currentPc)
+
+        currentPc.onicecandidate = (event) => {
+            if(event.candidate){
+                socketCon.send(JSON.stringify({
+                    type:'iceCandidate',
+                    candidate:event.candidate
+                }))
+            }
+        }
+
+        currentPc.onnegotiationneeded = async() => {
+            console.error('renegotiationneeded')
+            const offer = await currentPc.createOffer()
+            await currentPc.setLocalDescription(offer)
+            socketCon.send(JSON.stringify({
+                type:'createOffer',
+                sdp:currentPc.localDescription
+            }))
+        }
+        getStream()
+    }
+    const getStream = () =>{
+        navigator.mediaDevices.getUserMedia({video:true}).then((stream)=>{
+            if(videoRef.current){
+                videoRef.current.srcObject = stream
+                
+            }
+            stream.getTracks().forEach((track)=>{
+                pc?.addTrack(track)
+            })
+        })
+    }
+    // useEffect(() => {
+    
+    //     if (videoRef.current && hasVideo) {
+    //         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    //             .then(stream => {
+    //                 if (videoRef.current) {
+    //                     videoRef.current.srcObject = stream;
+    //                 }
+    //             })
+    //             .catch(err => console.log('Error accessing media devices:', err));
+    //     }
+    // }, [hasVideo]);
 
     const toggleMute = () => setIsMuted(!isMuted);
     const toggleVideo = () => setHasVideo(!hasVideo);
