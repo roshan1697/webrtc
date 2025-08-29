@@ -51,18 +51,58 @@ const Receiver: React.FC = () => {
 
     ];
 
-    useEffect(() => {
-        // Simulate getting user media
-        if (videoRef.current && hasVideo) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then(stream => {
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(err => console.log('Error accessing media devices:', err));
+    useEffect(()=>{
+        const ws = new WebSocket('ws://localhost:3001')
+        ws.onopen = () =>{
+            ws.send(JSON.stringify({
+                type:'receiver'
+            }))
         }
-    }, [hasVideo]);
+        startReceiving(ws)
+    },[])
+
+    const startReceiving = (ws:WebSocket) => {
+        const pc = new RTCPeerConnection()
+        
+        pc.ontrack = (event) =>{
+            console.log("track event", event.track)
+        if (videoRef.current && hasVideo) {
+
+            if(videoRef.current){
+                videoRef.current.srcObject = new MediaStream([event.track])
+            }
+        }
+    }
+
+        ws.onmessage = (event) => {
+            
+            const message  = JSON.parse(event.data)
+            if(message.type === 'createOffer'){
+                pc.setRemoteDescription(message.sdp).then(
+                    ()=> pc.createAnswer().then((ans)=>{pc.setLocalDescription(ans)
+                        ws.send(JSON.stringify({
+                            type:'createAnswer',
+                            sdp:ans
+                        }))
+                    })
+                )
+            }else if (message.type === 'iceCandidate'){
+                pc.addIceCandidate(message.candidate)
+            }
+    }
+    }
+    // useEffect(() => {
+    //     // Simulate getting user media
+    //     if (videoRef.current && hasVideo) {
+    //         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    //             .then(stream => {
+    //                 if (videoRef.current) {
+    //                     videoRef.current.srcObject = stream;
+    //                 }
+    //             })
+    //             .catch(err => console.log('Error accessing media devices:', err));
+    //     }
+    // }, [hasVideo]);
 
     const toggleMute = () => setIsMuted(!isMuted);
     const toggleVideo = () => setHasVideo(!hasVideo);

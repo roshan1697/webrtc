@@ -55,23 +55,22 @@ const Sender: React.FC = () => {
 
     useEffect(()=>{
         // ws connection
-        const ws = new WebSocket('http://localhost:3001')
-        setSocketCon(ws)
+        const ws = new WebSocket('ws://localhost:3001')
         try { 
             ws.onopen = () => ws.send(JSON.stringify({
-            type:'sender'
-        }))}
+                type:'sender'
+            }))
+            
+    }
         catch(e) {
             console.error(e)
         }
-        initialCon()
+        initialCon(ws)
     },[])
 
-    const initialCon = async() =>{
-        if(!socketCon){
-            return
-        }
-        socketCon.onmessage = ({data}) => {
+    const initialCon = async(ws:WebSocket) =>{
+    
+        ws.onmessage = ({data}) => {
             const message = JSON.parse(data)
 
             if(message.type === 'createAnswer'){
@@ -81,12 +80,14 @@ const Sender: React.FC = () => {
             }
         }
 
-        const currentPc = new RTCPeerConnection()
-        setPc(currentPc)
-
-        currentPc.onicecandidate = (event) => {
+        const currentPc = new RTCPeerConnection(
+        
+        )
+        
+    
+        currentPc.onicecandidate = async(event) => {
             if(event.candidate){
-                socketCon.send(JSON.stringify({
+                ws.send(JSON.stringify({
                     type:'iceCandidate',
                     candidate:event.candidate
                 }))
@@ -97,23 +98,29 @@ const Sender: React.FC = () => {
             console.error('renegotiationneeded')
             const offer = await currentPc.createOffer()
             await currentPc.setLocalDescription(offer)
-            socketCon.send(JSON.stringify({
+            ws.send(JSON.stringify({
                 type:'createOffer',
-                sdp:currentPc.localDescription
+                sdp:offer
             }))
         }
-        getStream()
+        
+        getStream(currentPc)
     }
-    const getStream = () =>{
+    const getStream = (pc:RTCPeerConnection) =>{
+     if (videoRef.current && hasVideo) {
         navigator.mediaDevices.getUserMedia({video:true}).then((stream)=>{
+            console.log(stream)
             if(videoRef.current){
                 videoRef.current.srcObject = stream
                 
             }
             stream.getTracks().forEach((track)=>{
+                console.log('track:  ', track)
                 pc?.addTrack(track)
             })
         })
+
+    }
     }
     // useEffect(() => {
     
