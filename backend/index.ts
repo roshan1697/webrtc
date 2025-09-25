@@ -5,6 +5,7 @@ const wss = new WebSocketServer({port:3001})
 let senderWS: null | WebSocket = null
 let receiverWS:null | WebSocket = null
 wss.on('connection', (ws)=>{
+    
     ws.on('error', console.error)
 
     ws.on('message', (data)=>{
@@ -18,7 +19,7 @@ wss.on('connection', (ws)=>{
             receiverWS = ws
         }
         else if( message.type == 'createOffer'){
-            if(ws != senderWS){
+            if(ws !== senderWS){
                 return
             }
 
@@ -26,7 +27,7 @@ wss.on('connection', (ws)=>{
             receiverWS?.send(JSON.stringify({type: 'createOffer', sdp:message.sdp}))
 
         }else if (message.type == 'createAnswer'){
-            if(ws != receiverWS){
+            if(ws !== receiverWS){
                 return
             }
             console.log('sending answer')

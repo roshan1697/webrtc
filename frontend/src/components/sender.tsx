@@ -109,13 +109,13 @@ const Sender: React.FC = () => {
     const getStream = (pc:RTCPeerConnection) =>{
      if (videoRef.current && hasVideo) {
         navigator.mediaDevices.getUserMedia({video:true}).then((stream)=>{
-            console.log(stream)
+        
             if(videoRef.current){
                 videoRef.current.srcObject = stream
                 
             }
             stream.getTracks().forEach((track)=>{
-                console.log('track:  ', track)
+                
                 pc?.addTrack(track)
             })
         })

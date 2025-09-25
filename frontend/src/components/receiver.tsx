@@ -63,20 +63,21 @@ const Receiver: React.FC = () => {
 
     const startReceiving = (ws:WebSocket) => {
         const pc = new RTCPeerConnection()
-        
+    
         pc.ontrack = (event) =>{
-            console.log("track event", event.track)
+            console.log("track event", event.streams[0])
         if (videoRef.current && hasVideo) {
 
             if(videoRef.current){
-                videoRef.current.srcObject = new MediaStream([event.track])
+                videoRef.current.srcObject = event.streams[0]
             }
         }
     }
 
         ws.onmessage = (event) => {
-            
+            console.log(event)
             const message  = JSON.parse(event.data)
+            console.log(message)
             if(message.type === 'createOffer'){
                 pc.setRemoteDescription(message.sdp).then(
                     ()=> pc.createAnswer().then((ans)=>{pc.setLocalDescription(ans)
