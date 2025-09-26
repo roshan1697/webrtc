@@ -63,16 +63,30 @@ const Receiver: React.FC = () => {
 
     const startReceiving = (ws:WebSocket) => {
         const pc = new RTCPeerConnection()
-    
+    const remoteStream = new MediaStream()
+        if (videoRef.current) {
+  videoRef.current.srcObject = remoteStream;
+  videoRef.current.playsInline = true;
+  
+}
         pc.ontrack = (event) =>{
-            console.log("track event", event.streams[0])
-        if (videoRef.current && hasVideo) {
+        //     console.log("track event", event.streams[0])
+        // if (videoRef.current && hasVideo) {
 
-            if(videoRef.current){
-                videoRef.current.srcObject = event.streams[0]
-            }
-        }
+        //     if(videoRef.current){
+        //         videoRef.current.srcObject = event.streams[0]
+        //     }
+        // }
+        const track = event.track;
+  
+  const already = remoteStream.getTracks().some(t => t.id === track.id);
+  if (!already) remoteStream.addTrack(track);
+            
+            
+            
     }
+    pc.addTransceiver('video', { direction: 'recvonly' });
+pc.addTransceiver('audio', { direction: 'recvonly' });
 
         ws.onmessage = (event) => {
             console.log(event)
